@@ -150,6 +150,9 @@
                onCancel: (void (^)(SKPaymentTransaction *transaction))cancel
                onVerify: (void (^)(SKPaymentTransaction *transaction))verify;
 
+
+-(void) restorePurchasesOnSuccess: (void (^)(SKPaymentTransaction *transaction))success
+                        onFailure: (void (^)(NSError *error))failure;
 #endif
 
 

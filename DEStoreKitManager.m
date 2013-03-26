@@ -205,6 +205,7 @@ typedef void (^DEStoreKitTransactionHandlerVerifyBlock)(SKPaymentTransaction *tr
 @property (nonatomic, copy) DEStoreKitTransactionHandlerSuccessBlock successBlock;
 @property (nonatomic, copy) DEStoreKitTransactionHandlerRestoreBlock restoreBlock;
 @property (nonatomic, copy) DEStoreKitTransactionHandlerFailureBlock failureBlock;
+@property (nonatomic, copy) DEStoreKitProductsFetchHandlerFailureBlock failureBlockWithError;
 @property (nonatomic, copy) DEStoreKitTransactionHandlerCancelBlock cancelBlock;
 @property (nonatomic, copy) DEStoreKitTransactionHandlerFailureBlock verifyBlock;
 #endif
@@ -271,9 +272,33 @@ typedef void (^DEStoreKitTransactionHandlerVerifyBlock)(SKPaymentTransaction *tr
     [[SKPaymentQueue defaultQueue] addPayment:self.payment];
 }
 
+- (void)restore {
+    [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+    [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
+}
+
+- (void) paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue
+{
+#warning If your application uses multiple IAP's uncomment out this loop to handle this.
+//    for (SKPaymentTransaction *trans in queue.transactions) {
+        if (self.successBlock) {
+            self.successBlock(nil);
+        }
+ //   }
+}
+
+- (void)paymentQueue:(SKPaymentQueue *)queue restoreCompletedTransactionsFailedWithError:(NSError *)error {
+    if (self.failureBlock) {
+        self.failureBlockWithError(error);
+    }
+}
+
+
 - (void)paymentQueue: (SKPaymentQueue *)queue
  updatedTransactions: (NSArray *)transactions {
     for (SKPaymentTransaction *transaction in transactions) {
+        NSLog(@"Error %d", transaction.transactionState);
+        NSLog(@"Payment %@", [transaction.payment description]);
         if ([transaction.payment isEqual:self.payment]) {
             switch (transaction.transactionState) {
                 case SKPaymentTransactionStatePurchased:
@@ -609,7 +634,22 @@ typedef void (^DEStoreKitTransactionHandlerVerifyBlock)(SKPaymentTransaction *tr
     [handler purchase];
 }
 
+-(void) restorePurchasesOnSuccess: (void (^)(SKPaymentTransaction *transaction))success
+                        onFailure: (void (^)(NSError *error))failure {
+    DEStoreKitTransactionHandler *handler = [[DEStoreKitTransactionHandler new] autorelease];
+    
+    handler.storeKitManager = self;
+    handler.successBlock = success;
+    handler.failureBlockWithError = failure;
+    
+    [self.transactionHandlers addObject:handler];
+    
+    [handler restore];
+}
+
+
 #endif
+
 
 -(void) transaction: (SKPaymentTransaction *)transaction
           didVerify: (BOOL)isValid {
